@@ -1,0 +1,28 @@
+# Levanta un Postgres local reproducible para desarrollo y deploy.
+# Tu DB de desarrollo "real" puede ser la remota vía Tailscale (ver CLAUDE.md);
+# este servicio es el que arranca con `docker compose up` para quien clone el repo.
+#
+# Las variables se leen del `.env` (no versionado). Hay defaults para que
+# `docker compose up` funcione incluso sin `.env`.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: jobmarket-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-jobmarket}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jobmarket}
+      POSTGRES_DB: ${POSTGRES_DB:-jobmarket}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jobmarket} -d ${POSTGRES_DB:-jobmarket}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

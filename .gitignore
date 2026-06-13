@@ -1,0 +1,34 @@
+# ── Secretos / entorno ──
+# NUNCA commitear credenciales. El .mcp.json SÍ se commitea
+# (usa ${DATABASE_URI}), pero el .env real no.
+.env
+.env.local
+*.env.local
+
+# ── Claude Code (contexto interno, no parte del repo público) ──
+# CLAUDE.md lleva notas internas e IPs de Tailscale → fuera del repo.
+CLAUDE.md
+.claude/
+
+# ── Dependencias ──
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# ── Build / artefactos ──
+dist/
+build/
+bin/
+*.log
+
+# ── Datos locales de desarrollo ──
+jobs.json
+*.local.json
+
+# ── OS / editores ──
+.DS_Store
+.idea/
+.vscode/
+*.swp
