@@ -146,16 +146,23 @@ def extract_country(location: str | None) -> str | None:
 # ─────────────────────── fechas ──────────────────────────────
 
 
-def parse_posted_at(payload: dict) -> datetime | None:
-    """Fecha de publicación desde 'date' (ISO 8601) o, en su defecto, 'epoch'."""
-    date_str = payload.get("date")
-    if isinstance(date_str, str) and date_str:
+def parse_datetime(value) -> datetime | None:
+    """Convierte un valor a datetime con zona horaria (UTC si viene sin tz).
+
+    Acepta una cadena ISO 8601 (ej. RemoteOK/Remotive) o un epoch en segundos
+    (ej. RemoteOK 'epoch' / Arbeitnow 'created_at').
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if not value:
+            return None
         try:
-            return datetime.fromisoformat(date_str)
+            dt = datetime.fromisoformat(value)
         except ValueError:
-            pass
-    epoch = payload.get("epoch")
+            return None
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
     try:
-        return datetime.fromtimestamp(int(epoch), tz=timezone.utc)
+        return datetime.fromtimestamp(int(value), tz=timezone.utc)
     except (TypeError, ValueError):
         return None

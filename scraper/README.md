@@ -44,15 +44,25 @@ cortesía), `-timeout` (límite global).
 
 ## Fuentes
 
+Cada fuente vive en `internal/source/<nombre>/` e implementa `Scraper`. Cada una usa
+su propio cliente HTTP → **rate limiting independiente por dominio**.
+
 | Fuente | Endpoint | Notas |
 |--------|----------|-------|
-| **RemoteOK** | `https://remoteok.com/api` | JSON público sin auth. El 1er elemento es metadata legal (se descarta). ⚠️ **Exige atribución**: enlazar de vuelta a la oferta y citar "Remote OK" como fuente, o suspenden la API. |
+| **RemoteOK** | `https://remoteok.com/api` | JSON sin auth; array (1er elemento = metadata legal, se descarta). ⚠️ **Atribución** obligatoria. |
+| **Remotive** | `https://remotive.com/api/remote-jobs` | JSON sin auth; ofertas bajo `jobs`. ⚠️ **Atribución** (ver `0-legal-notice`). |
+| **Arbeitnow** | `https://www.arbeitnow.com/api/job-board-api` | JSON sin auth; ofertas bajo `data`. Foco europeo; campo `remote` real. |
+
+> Fuentes a evitar (ToS/anti-bot): LinkedIn, Indeed, Glassdoor. Ver
+> `documentación/V1/06-fuentes-de-datos.md` y `07-etica-y-legalidad.md`.
 
 ## Estado
 
-- ✅ **Fase 1 hecha:** scraper de RemoteOK → `jobs.json` con ofertas reales.
-- ⬜ **Fase 2:** insertar `RawJob` en Postgres (`raw_jobs`) en vez de / además de `jobs.json`.
-- ⬜ **Fase 3:** más fuentes detrás de la interfaz `Scraper` + dedup.
+- ✅ **Fase 1 hecha:** scraper de RemoteOK → `jobs.json`.
+- ✅ **Fase 2 hecha:** sink a Postgres (`raw_jobs`, idempotente) vía pgx.
+- ✅ **Fase 3 hecha:** 3 fuentes en paralelo + aislamiento de fallos (una fuente caída
+  no tumba al resto, ni al scrapear ni al persistir). Dedup por `fingerprint` la hace
+  el procesador.
 
 > El módulo es `github.com/x3no/tech-job-market-analyzer/scraper`. Si tu repo/usuario
 > de GitHub es otro, cámbialo en `go.mod` (y en los imports) — es la única dependencia

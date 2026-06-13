@@ -23,14 +23,16 @@ def connect() -> psycopg.Connection:
 
 
 def fetch_unprocessed(conn: psycopg.Connection, limit: int) -> list[dict]:
-    """Devuelve un lote de ofertas crudas sin procesar, en orden de inserción."""
+    """Devuelve un lote de ofertas crudas sin procesar, con el nombre de su fuente."""
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT id, source_id, external_id, raw_payload, url, scraped_at
-            FROM raw_jobs
-            WHERE processed = FALSE
-            ORDER BY id
+            SELECT r.id, r.source_id, s.name AS source_name,
+                   r.external_id, r.raw_payload, r.url, r.scraped_at
+            FROM raw_jobs r
+            JOIN sources s ON s.id = r.source_id
+            WHERE r.processed = FALSE
+            ORDER BY r.id
             LIMIT %s
             """,
             (limit,),
@@ -85,3 +87,30 @@ def mark_processed(conn: psycopg.Connection, raw_ids: list[int]) -> None:
             "UPDATE raw_jobs SET processed = TRUE WHERE id = ANY(%s)",
             (raw_ids,),
         )
+
+
+def recompute_duplicates(conn: psycopg.Connection) -> int:
+    """Recalcula la marca de duplicado en TODA la tabla jobs.
+
+    Por cada `fingerprint`, la oferta más antigua (first_seen_at, id) es la canónica
+    (is_duplicate = FALSE) y el resto se marcan como duplicadas. Idempotente y
+    basado en conjuntos (window function). Devuelve cuántas filas cambiaron.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            WITH ranked AS (
+                SELECT id,
+                       row_number() OVER (
+                           PARTITION BY fingerprint ORDER BY first_seen_at, id
+                       ) AS rn
+                FROM jobs
+            )
+            UPDATE jobs j
+            SET is_duplicate = (r.rn > 1)
+            FROM ranked r
+            WHERE r.id = j.id
+              AND j.is_duplicate <> (r.rn > 1)
+            """
+        )
+        return cur.rowcount

@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -26,7 +27,9 @@ import (
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/httpx"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/rawjob"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source"
+	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source/arbeitnow"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source/remoteok"
+	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source/remotive"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/store"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/store/pgstore"
 )
@@ -42,7 +45,9 @@ type sourceMeta struct {
 
 // catálogo de metadatos por nombre de fuente (para upsert en sources).
 var sourceCatalog = map[string]sourceMeta{
-	"remoteok": {baseURL: "https://remoteok.com", rateLimitPerMin: 60},
+	"remoteok":  {baseURL: "https://remoteok.com", rateLimitPerMin: 60},
+	"remotive":  {baseURL: "https://remotive.com", rateLimitPerMin: 60},
+	"arbeitnow": {baseURL: "https://www.arbeitnow.com", rateLimitPerMin: 60},
 }
 
 func main() {
@@ -68,10 +73,11 @@ func main() {
 	ctx, cancelTimeout := context.WithTimeout(ctx, *timeout)
 	defer cancelTimeout()
 
-	client := httpx.New(userAgent, *rps, 1)
+	// Un cliente HTTP por fuente → rate limiting independiente por dominio.
 	scrapers := []source.Scraper{
-		remoteok.New(client),
-		// Fase 3: añadir más fuentes aquí detrás de la misma interfaz.
+		remoteok.New(httpx.New(userAgent, *rps, 1)),
+		remotive.New(httpx.New(userAgent, *rps, 1)),
+		arbeitnow.New(httpx.New(userAgent, *rps, 1)),
 	}
 
 	start := time.Now()
@@ -125,18 +131,25 @@ func persistPostgres(ctx context.Context, jobs []rawjob.RawJob) error {
 		bySource[j.Source] = append(bySource[j.Source], j)
 	}
 
+	failed := 0
 	for name, group := range bySource {
 		meta, ok := sourceCatalog[name]
 		if !ok {
 			slog.Warn("fuente sin metadatos en el catálogo; usando defaults", "source", name)
 		}
+		// Aislamiento de fallos: si una fuente falla al persistir, se registra
+		// y se continúa con el resto (no se aborta toda la ingesta).
 		sourceID, err := st.UpsertSource(ctx, name, meta.baseURL, meta.rateLimitPerMin)
 		if err != nil {
-			return err
+			slog.Error("upsert source falló", "source", name, "err", err)
+			failed++
+			continue
 		}
 		inserted, err := st.InsertRawJobs(ctx, sourceID, group)
 		if err != nil {
-			return err
+			slog.Error("insert raw_jobs falló", "source", name, "err", err)
+			failed++
+			continue
 		}
 		slog.Info("raw_jobs persistidos",
 			"source", name,
@@ -145,6 +158,9 @@ func persistPostgres(ctx context.Context, jobs []rawjob.RawJob) error {
 			"insertados", inserted,
 			"duplicados", len(group)-inserted,
 		)
+	}
+	if failed > 0 {
+		return fmt.Errorf("%d fuente(s) fallaron al persistir", failed)
 	}
 	return nil
 }

@@ -15,11 +15,21 @@ lee `raw_jobs` (lo no procesado), transforma y escribe en `jobs`.
 ```
 processor/
   __main__.py          entrypoint: python -m processor
-  pipeline.py          orquesta raw_jobs -> transform -> jobs (por lotes, commit por lote)
+  pipeline.py          orquesta raw_jobs -> transform -> jobs (por lotes) + dedup
+  adapters.py          mapeo por fuente (payload crudo -> dict normalizado común)
   extract.py           funciones puras: tech, salario, seniority, remoto, fingerprint, fechas
   tech_dictionary.py   forma canónica -> alias de cada tecnología
-  db.py                acceso a Postgres (consultas parametrizadas)
+  db.py                acceso a Postgres (consultas parametrizadas) + recálculo de duplicados
 ```
+
+Añadir una fuente nueva = añadir su adaptador en `adapters.py` (el enriquecimiento
+común no cambia).
+
+## Deduplicación
+
+Tras procesar lo pendiente, `recompute_duplicates` recalcula `jobs.is_duplicate` con
+una *window function*: por cada `fingerprint`, la oferta más antigua es la canónica y
+el resto se marcan como duplicadas. La API mostrará solo `is_duplicate = FALSE`.
 
 ## Uso
 
@@ -36,8 +46,9 @@ python -m processor --batch-size 200
 ## Estado
 
 - ✅ **Fase 2 hecha:** ETL completo `raw_jobs` → `jobs` verificado con datos reales.
-- ⬜ **Fase 3:** deduplicación por `fingerprint` (hay ~11% de duplicados detectados).
-- ⬜ Mejoras: normalización de país, reparar *mojibake* de origen, diccionario de tech más amplio.
+- ✅ **Fase 3 hecha:** multi-fuente (adaptadores) + deduplicación por `fingerprint`.
+- ⬜ Mejoras: normalización de país, parseo de salario de Remotive (texto libre),
+  reparar *mojibake* de origen, diccionario de tech más amplio.
 
 > **Limitación conocida:** algunos títulos de RemoteOK llegan con doble codificación
 > (*mojibake*, p.ej. emojis) desde el origen. No es un bug del pipeline; se abordará

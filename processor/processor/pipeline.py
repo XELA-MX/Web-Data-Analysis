@@ -9,20 +9,23 @@ from __future__ import annotations
 
 import logging
 
-from . import db, extract
+from . import adapters, db, extract
 
 log = logging.getLogger("processor")
 
 
 def transform(raw: dict) -> dict:
-    """Convierte una fila de raw_jobs en el dict de campos de `jobs`."""
-    payload: dict = raw["raw_payload"] or {}
-    tags = payload.get("tags") or []
-    title = payload.get("position") or ""
-    company = payload.get("company") or ""
-    description = extract.strip_html(payload.get("description") or "")
+    """Convierte una fila de raw_jobs en el dict de campos de `jobs`.
 
-    salary_min, salary_max, currency = extract.normalize_salary(payload)
+    El mapeo específico de cada fuente lo hace su adaptador; aquí solo se aplica el
+    enriquecimiento común (limpiar descripción, tech_stack, seniority, fingerprint).
+    """
+    norm = adapters.adapt(raw["source_name"], raw["raw_payload"])
+
+    title = norm["title"]
+    company = norm["company"]
+    tags = norm["tags"]
+    description = extract.strip_html(norm["description"])
 
     return {
         "source_id": raw["source_id"],
@@ -30,17 +33,17 @@ def transform(raw: dict) -> dict:
         "fingerprint": extract.fingerprint(title, company),
         "title": title,
         "company": company or None,
-        "location": payload.get("location") or None,
-        "country": extract.extract_country(payload.get("location")),
-        "remote": extract.detect_remote(tags, payload.get("location"), "remoteok"),
-        "salary_min": salary_min,
-        "salary_max": salary_max,
-        "currency": currency,
+        "location": norm["location"] or None,
+        "country": extract.extract_country(norm["location"]),
+        "remote": norm["remote"],
+        "salary_min": norm["salary_min"],
+        "salary_max": norm["salary_max"],
+        "currency": norm["currency"],
         "tech_stack": extract.extract_tech_stack(tags, title, description),
         "seniority": extract.infer_seniority(title, tags),
         "description": description or None,
-        "url": payload.get("url") or raw["url"],
-        "posted_at": extract.parse_posted_at(payload),
+        "url": norm["url"] or raw["url"],
+        "posted_at": norm["posted_at"],
         "scraped_at": raw["scraped_at"],
     }
 
@@ -66,6 +69,11 @@ def run(batch_size: int = 500) -> int:
 
             total += len(rows)
             log.info("lote procesado: %d (acumulado %d)", len(rows), total)
+
+        # Deduplicación cross-source una vez procesado todo lo pendiente.
+        changed = db.recompute_duplicates(conn)
+        conn.commit()
+        log.info("deduplicación: %d filas actualizadas", changed)
 
     log.info("procesado completado: %d ofertas", total)
     return total
