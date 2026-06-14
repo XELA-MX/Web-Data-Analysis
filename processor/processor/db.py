@@ -11,8 +11,12 @@ from __future__ import annotations
 import os
 
 import psycopg
+from dotenv import find_dotenv, load_dotenv
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+
+# Carga el .env del proyecto si existe (no sobreescribe el entorno ya presente).
+load_dotenv(find_dotenv(usecwd=True))
 
 
 def connect() -> psycopg.Connection:

@@ -1,2 +1,4 @@
 # Acceso a Postgres (driver moderno, v3).
 psycopg[binary]>=3.2,<4
+# Carga de variables desde el .env del proyecto.
+python-dotenv>=1.0,<2
