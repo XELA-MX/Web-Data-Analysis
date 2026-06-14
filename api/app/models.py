@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -84,3 +85,43 @@ class UserOut(BaseModel):
     provider: str
     created_at: datetime
     last_login_at: datetime | None
+
+
+# ──────────────────────── personalización ────────────────────────
+
+Seniority = Literal["junior", "mid", "senior"]
+WorkMode = Literal["remote", "hybrid", "onsite"]
+SavedStatus = Literal["saved", "dismissed", "applied"]
+
+
+class PreferencesIn(BaseModel):
+    role: str | None = Field(default=None, max_length=40)
+    tech_stack: list[str] = Field(default_factory=list, max_length=50)
+    seniority: Seniority | None = None
+    work_mode: WorkMode | None = None
+    country: str | None = Field(default=None, max_length=60)
+    salary_target: int | None = Field(default=None, ge=0)
+
+
+class PreferencesOut(BaseModel):
+    role: str | None
+    tech_stack: list[str]
+    seniority: str | None
+    work_mode: str | None
+    country: str | None
+    salary_target: int | None
+    updated_at: datetime | None
+
+
+class SavedJobIn(BaseModel):
+    job_id: int
+    status: SavedStatus = "saved"
+
+
+class SavedJob(Job):
+    saved_status: str
+    saved_at: datetime
+
+
+class FeedItem(Job):
+    score: int

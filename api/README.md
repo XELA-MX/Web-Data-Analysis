@@ -20,6 +20,16 @@ el conjunto **canónico** (`is_duplicate = FALSE`). Ver RF-12 en
 | POST | `/auth/logout` | Cierra la sesión |
 | GET | `/auth/me` | Usuario autenticado (401 si no) |
 | DELETE | `/auth/me` | Borra la cuenta y sus datos (RGPD) |
+| GET/PUT | `/me/preferences` | Lee/actualiza el perfil (rol, stack, seniority, modalidad…) |
+| GET | `/me/feed` | Feed personalizado por afinidad (scoring) |
+| GET | `/me/saved` | Ofertas guardadas/descartadas (filtro `status`) |
+| PUT | `/me/saved` | Guarda/descarta/marca-aplicada una oferta |
+| DELETE | `/me/saved/{job_id}` | Quita una oferta de guardadas |
+
+> Los endpoints `/me/*` requieren sesión y se **aíslan por el `user_id` de la sesión**
+> (un usuario nunca ve/borra datos de otro). El **scoring** del feed: +1 por cada
+> tecnología del perfil presente en la oferta, +2 si coincide el seniority, +1 si quiere
+> remoto y la oferta es remota; excluye las descartadas.
 
 Docs interactivos automáticos en `/docs` (Swagger) y `/redoc`.
 
