@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 
 
 class Job(BaseModel):
@@ -61,3 +61,26 @@ class Overview(BaseModel):
     with_tech: int
     sources: int
     last_scraped: datetime | None
+
+
+# ───────────────────────────── auth ─────────────────────────────
+
+
+class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=10, max_length=200)
+    display_name: str | None = Field(default=None, max_length=80)
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=200)
+
+
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    display_name: str | None
+    provider: str
+    created_at: datetime
+    last_login_at: datetime | None
