@@ -49,6 +49,11 @@ export interface TrendPoint {
   jobs: number
 }
 
+export interface TechHistoryPoint {
+  date: string
+  count: number
+}
+
 export interface SourceCount {
   source: string
   jobs: number
@@ -176,6 +181,8 @@ export const fetchCategories = () => get<CategoryCount[]>('/stats/categories')
 export const fetchSalary = (by: 'seniority' | 'tech' = 'seniority') =>
   get<SalaryByGroup[]>(`/stats/salary?by=${by}`)
 export const fetchTrends = (days = 30) => get<TrendPoint[]>(`/stats/trends?days=${days}`)
+export const fetchTechHistory = (tech: string, days = 30) =>
+  get<TechHistoryPoint[]>(`/stats/tech/history?tech=${encodeURIComponent(tech)}&days=${days}`)
 export const fetchSources = () => get<SourceCount[]>('/stats/sources')
 
 // ── auth ──

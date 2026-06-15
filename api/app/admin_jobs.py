@@ -174,6 +174,8 @@ def _friendly(line: str, kind: str) -> str | None:
         return f"Procesadas {acc.group(1)} ofertas…"
     if "deduplicación" in line:
         return "Quitando duplicados…"
+    if "snapshot diario" in line:
+        return "Guardando histórico de tendencias…"
     if "procesado completado" in line:
         return "Procesado terminado ✓"
     return None

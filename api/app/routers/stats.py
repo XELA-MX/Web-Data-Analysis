@@ -6,7 +6,15 @@ from fastapi import APIRouter, Depends, Query
 
 from .. import queries
 from ..db import get_conn
-from ..models import CategoryCount, Overview, SalaryByGroup, SourceCount, TechCount, TrendPoint
+from ..models import (
+    CategoryCount,
+    Overview,
+    SalaryByGroup,
+    SourceCount,
+    TechCount,
+    TechHistoryPoint,
+    TrendPoint,
+)
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -19,6 +27,15 @@ def get_overview(conn=Depends(get_conn)) -> Overview:
 @router.get("/tech", response_model=list[TechCount])
 def get_top_tech(conn=Depends(get_conn), limit: int = Query(20, ge=1, le=100)) -> list[TechCount]:
     return [TechCount(**r) for r in queries.top_tech(conn, limit)]
+
+
+@router.get("/tech/history", response_model=list[TechHistoryPoint])
+def get_tech_history(
+    conn=Depends(get_conn),
+    tech: str = Query(..., min_length=1, max_length=40),
+    days: int = Query(30, ge=1, le=365),
+) -> list[TechHistoryPoint]:
+    return [TechHistoryPoint(**r) for r in queries.tech_history(conn, tech.lower(), days)]
 
 
 @router.get("/categories", response_model=list[CategoryCount])

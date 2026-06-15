@@ -70,11 +70,14 @@ func (s *Store) InsertRawJobs(ctx context.Context, sourceID int, jobs []rawjob.R
 			INSERT INTO raw_jobs (source_id, external_id, raw_payload, url, scraped_at, processed)
 			VALUES ($1, $2, $3::jsonb, $4, $5, FALSE)
 			ON CONFLICT (source_id, external_id) DO UPDATE SET
-				raw_payload = EXCLUDED.raw_payload,
+				-- Fusión NO destructiva: las claves nuevas pisan, pero las que el
+				-- payload nuevo no trae (p. ej. techNames de Manfred en un refresco
+				-- rápido) se conservan. Reprocesa solo si la fusión cambia algo.
+				raw_payload = raw_jobs.raw_payload || EXCLUDED.raw_payload,
 				url         = EXCLUDED.url,
 				scraped_at  = EXCLUDED.scraped_at,
 				processed   = CASE
-					WHEN raw_jobs.raw_payload IS DISTINCT FROM EXCLUDED.raw_payload THEN FALSE
+					WHEN (raw_jobs.raw_payload || EXCLUDED.raw_payload) IS DISTINCT FROM raw_jobs.raw_payload THEN FALSE
 					ELSE raw_jobs.processed
 				END
 			RETURNING (xmax = 0) AS inserted`,

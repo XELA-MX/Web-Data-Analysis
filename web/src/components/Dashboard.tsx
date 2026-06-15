@@ -6,6 +6,7 @@ import OverviewCards from './OverviewCards'
 import TopTechChart from './TopTechChart'
 import SalaryChart from './SalaryChart'
 import TrendsChart from './TrendsChart'
+import TechHistoryChart from './TechHistoryChart'
 import JobFiltersBar from './JobFilters'
 import JobsList from './JobsList'
 import PersonalFeed from './PersonalFeed'
@@ -65,7 +66,10 @@ export default function Dashboard({ user, onEditPrefs }: { user: User; onEditPre
           <TopTechChart />
           <SalaryChart />
         </div>
-        <TrendsChart />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <TrendsChart />
+          <TechHistoryChart />
+        </div>
       </section>
 
       <section className="space-y-3">

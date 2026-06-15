@@ -35,6 +35,7 @@ migrate -path ./migrations -database "$DATABASE_URI" down 1
 | `0006`  | `users.is_admin` (rol admin). Marcar admins = `UPDATE` manual por email. |
 | `0007`  | Añade `intern` a los niveles de seniority (jobs + user_preferences). |
 | `0008`  | `user_preferences.categories` (lista) sustituye a `role` (área única → múltiples). |
+| `0009`  | `tech_daily_stats` (histórico diario por tecnología, para tendencias). |
 
 > Las tablas de usuarios/personalización llegaron en `0004` (Fase 4.5). `alerts` queda
 > como extensión futura.

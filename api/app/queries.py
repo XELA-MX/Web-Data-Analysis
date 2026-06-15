@@ -194,6 +194,22 @@ def admin_stats(conn: psycopg.Connection) -> dict:
         return cur.fetchone()
 
 
+def tech_history(conn: psycopg.Connection, tech: str, days: int) -> list[dict]:
+    """Serie temporal de demanda de una tecnología (desde el histórico diario)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT to_char(snapshot_date, 'YYYY-MM-DD') AS date, job_count AS count
+            FROM tech_daily_stats
+            WHERE tech = %(tech)s
+              AND snapshot_date >= CURRENT_DATE - make_interval(days => %(days)s)
+            ORDER BY snapshot_date
+            """,
+            {"tech": tech, "days": days},
+        )
+        return cur.fetchall()
+
+
 def sources_with_counts(conn: psycopg.Connection) -> list[dict]:
     with conn.cursor() as cur:
         cur.execute(

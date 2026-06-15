@@ -94,6 +94,31 @@ def mark_processed(conn: psycopg.Connection, raw_ids: list[int]) -> None:
         )
 
 
+def write_tech_snapshot(conn: psycopg.Connection) -> int:
+    """Guarda el snapshot diario de demanda por tecnología (idempotente por día).
+
+    Calcula, sobre las ofertas canónicas, cuántas mencionan cada tecnología y el
+    salario medio. Re-ejecutar el mismo día solo actualiza los números de hoy; al
+    pasar los días se acumula el histórico para las tendencias.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO tech_daily_stats (snapshot_date, tech, job_count, avg_salary_min, avg_salary_max)
+            SELECT CURRENT_DATE, tech, count(*),
+                   round(avg(j.salary_min))::int, round(avg(j.salary_max))::int
+            FROM jobs j, jsonb_array_elements_text(j.tech_stack) AS tech
+            WHERE NOT j.is_duplicate
+            GROUP BY tech
+            ON CONFLICT (snapshot_date, tech) DO UPDATE SET
+                job_count = EXCLUDED.job_count,
+                avg_salary_min = EXCLUDED.avg_salary_min,
+                avg_salary_max = EXCLUDED.avg_salary_max
+            """
+        )
+        return cur.rowcount
+
+
 def recompute_duplicates(conn: psycopg.Connection) -> int:
     """Recalcula la marca de duplicado en TODA la tabla jobs.
 

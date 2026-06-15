@@ -55,6 +55,11 @@ class TrendPoint(BaseModel):
     jobs: int
 
 
+class TechHistoryPoint(BaseModel):
+    date: str
+    count: int
+
+
 class SourceCount(BaseModel):
     source: str
     jobs: int

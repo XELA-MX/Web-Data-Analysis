@@ -77,5 +77,10 @@ def run(batch_size: int = 500) -> int:
         conn.commit()
         log.info("deduplicación: %d filas actualizadas", changed)
 
+        # Snapshot diario de demanda por tecnología (para tendencias en el tiempo).
+        techs = db.write_tech_snapshot(conn)
+        conn.commit()
+        log.info("snapshot diario: %d tecnologías", techs)
+
     log.info("procesado completado: %d ofertas", total)
     return total
