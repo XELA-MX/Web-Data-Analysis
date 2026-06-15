@@ -72,21 +72,27 @@ def extract_tech_stack(tags: list[str], title: str, description: str) -> list[st
 # ─────────────────────── seniority ───────────────────────────
 
 _SENIOR_RE = re.compile(r"\b(senior|sr|lead|principal|staff|architect|head of)\b", re.IGNORECASE)
-_JUNIOR_RE = re.compile(r"\b(junior|jr|intern|internship|entry[- ]level|graduate|trainee)\b", re.IGNORECASE)
+_INTERN_RE = re.compile(
+    r"\b(intern|internship|becari[oa]|pr[aá]cticas|trainee|undergraduate|working student|werkstudent)\b",
+    re.IGNORECASE,
+)
+_JUNIOR_RE = re.compile(r"\b(junior|jr|entry[- ]level|graduate)\b", re.IGNORECASE)
 _MID_RE = re.compile(r"\b(mid|mid[- ]level|intermediate)\b", re.IGNORECASE)
 
 
 def infer_seniority(title: str, tags: list[str]) -> str | None:
-    """Devuelve 'junior' | 'mid' | 'senior' | None.
+    """Devuelve 'intern' | 'junior' | 'mid' | 'senior' | None.
 
-    Usa señales fiables: el título primero y, si no, los tags (RemoteOK etiqueta
-    explícitamente 'junior'/'senior'). NO se escanea la descripción: genera falsos
-    positivos (una mención suelta de 'senior' en el texto no define el puesto).
+    Usa señales fiables: el título primero y, si no, los tags. NO se escanea la
+    descripción (falsos positivos). 'intern' (prácticas/becario/undergraduate) se
+    comprueba antes que 'junior'.
     """
     tagtext = " ".join(tags or [])
     for text in (title or "", tagtext):
         if _SENIOR_RE.search(text):
             return "senior"
+        if _INTERN_RE.search(text):
+            return "intern"
         if _JUNIOR_RE.search(text):
             return "junior"
         if _MID_RE.search(text):
@@ -144,6 +150,47 @@ def extract_country(location: str | None) -> str | None:
 
 
 # ─────────────────────── fechas ──────────────────────────────
+
+
+# ─────────────────────── categoría ───────────────────────────
+
+# Por título (señal fuerte). Orden: de más específico a menos.
+_CATEGORY_TITLE = [
+    ("fullstack", re.compile(r"\bfull[\s-]?stack\b", re.IGNORECASE)),
+    ("mobile", re.compile(r"\b(ios|android|mobile|react native|flutter)\b", re.IGNORECASE)),
+    ("devops", re.compile(r"\b(devops|sre|site reliability|platform|infra|infrastructure|cloud engineer)\b", re.IGNORECASE)),
+    ("data", re.compile(r"\b(data|machine learning|\bml\b|analytics|analyst|scientist|big data)\b", re.IGNORECASE)),
+    ("qa", re.compile(r"\b(qa|quality assurance|tester|testing|sdet)\b", re.IGNORECASE)),
+    ("security", re.compile(r"\b(security|seguridad|cyber|infosec)\b", re.IGNORECASE)),
+    ("frontend", re.compile(r"\b(frontend|front[\s-]end|ui engineer)\b", re.IGNORECASE)),
+    ("backend", re.compile(r"\b(backend|back[\s-]end)\b", re.IGNORECASE)),
+]
+
+# Por stack (si el título no lo dice). Conjuntos razonablemente distintos.
+_CATEGORY_TECH: dict[str, set[str]] = {
+    "frontend": {"react", "vue", "angular", "svelte", "nextjs", "tailwind", "html", "css"},
+    "backend": {"go", "python", "java", "php", "ruby", "rails", "django", "flask", "spring",
+                "nodejs", "dotnet", "express", "laravel", "c#", "c++", "graphql"},
+    "data": {"pandas", "spark", "tensorflow", "pytorch", "machine learning", "kafka", "elasticsearch"},
+    "devops": {"docker", "kubernetes", "terraform", "ansible", "aws", "gcp", "azure", "ci/cd"},
+    "mobile": {"swift", "kotlin"},
+}
+
+
+def categorize(title: str, tech_stack: list[str]) -> str:
+    """Clasifica la oferta en una categoría para filtrar. El título manda; si no,
+    se infiere del stack. Si hay señales de frontend Y backend → fullstack."""
+    for cat, rx in _CATEGORY_TITLE:
+        if rx.search(title or ""):
+            return cat
+
+    techs = set(tech_stack)
+    counts = {cat: len(techs & s) for cat, s in _CATEGORY_TECH.items()}
+    if counts["frontend"] and counts["backend"]:
+        return "fullstack"
+    if any(counts.values()):
+        return max(counts, key=lambda c: counts[c])
+    return "other"
 
 
 def parse_datetime(value) -> datetime | None:

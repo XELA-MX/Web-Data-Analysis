@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import auth, db, personal
+from . import admin, auth, db, personal
 from .routers import jobs, stats
 
 # Orígenes permitidos para CORS (coma-separados). Por defecto, el dev server de Vite.
@@ -54,6 +54,7 @@ async def security_headers(request: Request, call_next):
 
 app.include_router(auth.router)
 app.include_router(personal.router)
+app.include_router(admin.router)
 app.include_router(jobs.router)
 app.include_router(stats.router)
 

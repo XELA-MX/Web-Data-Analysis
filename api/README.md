@@ -9,9 +9,10 @@ el conjunto **canónico** (`is_duplicate = FALSE`). Ver RF-12 en
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/health` | Liveness + comprobación de DB |
-| GET | `/jobs` | Búsqueda/filtrado. Query: `q`, `tech` (repetible, AND), `seniority`, `remote`, `source`, `salary_min`, `limit` (1-100), `offset` |
+| GET | `/jobs` | Búsqueda/filtrado. Query: `q`, `tech` (repetible, AND), `seniority`, `category`, `remote`, `source`, `salary_min`, `limit` (1-100), `offset` |
 | GET | `/stats/overview` | Totales: jobs, % remoto, con salario, con tech, fuentes, último scrape |
 | GET | `/stats/tech` | Top tecnologías (`limit`) |
+| GET | `/stats/categories` | Ofertas por categoría (frontend, backend, data…) |
 | GET | `/stats/salary` | Rangos salariales medios por `by=seniority\|tech` |
 | GET | `/stats/trends` | Ofertas vistas por día (`days`, 1-365) |
 | GET | `/stats/sources` | Nº de ofertas canónicas por fuente |
@@ -25,6 +26,14 @@ el conjunto **canónico** (`is_duplicate = FALSE`). Ver RF-12 en
 | GET | `/me/saved` | Ofertas guardadas/descartadas (filtro `status`) |
 | PUT | `/me/saved` | Guarda/descarta/marca-aplicada una oferta |
 | DELETE | `/me/saved/{job_id}` | Quita una oferta de guardadas |
+| GET | `/admin/stats` | (admin) Métricas: usuarios, ofertas, sin procesar, fuentes |
+| POST | `/admin/refresh` | (admin) Relanza scraper+procesador en background (`?full=true` = con skills Manfred) |
+| GET | `/admin/refresh` | (admin) Estado del refresco (running/done/error) |
+
+> Los endpoints `/admin/*` exigen **rol admin** (`require_admin` → 403 si no). Para hacer
+> admin a un usuario: `UPDATE users SET is_admin=TRUE WHERE email='...'`. El refresco lanza
+> el scraper Go (`go run`) + el procesador como subprocesos → la API necesita `go` en el PATH
+> y el venv de `/processor` (`.venv`).
 
 > Los endpoints `/me/*` requieren sesión y se **aíslan por el `user_id` de la sesión**
 > (un usuario nunca ve/borra datos de otro). El **scoring** del feed: +1 por cada

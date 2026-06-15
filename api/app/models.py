@@ -21,6 +21,7 @@ class Job(BaseModel):
     currency: str | None
     tech_stack: list[str]
     seniority: str | None
+    category: str | None
     url: str | None
     posted_at: datetime | None
 
@@ -34,6 +35,11 @@ class JobList(BaseModel):
 
 class TechCount(BaseModel):
     tech: str
+    count: int
+
+
+class CategoryCount(BaseModel):
+    category: str
     count: int
 
 
@@ -52,6 +58,24 @@ class TrendPoint(BaseModel):
 class SourceCount(BaseModel):
     source: str
     jobs: int
+
+
+class AdminStats(BaseModel):
+    users: int
+    jobs: int
+    pending_raw: int
+    last_scraped: datetime | None
+    sources: list["SourceCount"]
+
+
+class RefreshState(BaseModel):
+    status: str  # idle | running | done | error
+    step: str | None = None
+    progress: int = 0
+    message: str | None = None
+    log: list[str] = []
+    started_at: str | None = None
+    finished_at: str | None = None
 
 
 class Overview(BaseModel):
@@ -85,17 +109,18 @@ class UserOut(BaseModel):
     provider: str
     created_at: datetime
     last_login_at: datetime | None
+    is_admin: bool
 
 
 # ──────────────────────── personalización ────────────────────────
 
-Seniority = Literal["junior", "mid", "senior"]
+Seniority = Literal["intern", "junior", "mid", "senior"]
 WorkMode = Literal["remote", "hybrid", "onsite"]
 SavedStatus = Literal["saved", "dismissed", "applied"]
 
 
 class PreferencesIn(BaseModel):
-    role: str | None = Field(default=None, max_length=40)
+    categories: list[str] = Field(default_factory=list, max_length=12)
     tech_stack: list[str] = Field(default_factory=list, max_length=50)
     seniority: Seniority | None = None
     work_mode: WorkMode | None = None
@@ -104,7 +129,7 @@ class PreferencesIn(BaseModel):
 
 
 class PreferencesOut(BaseModel):
-    role: str | None
+    categories: list[str]
     tech_stack: list[str]
     seniority: str | None
     work_mode: str | None

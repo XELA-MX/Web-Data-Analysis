@@ -6,6 +6,8 @@ lee `raw_jobs` (lo no procesado), transforma y escribe en `jobs`.
 - **tech_stack**: detección por diccionario + regex (tags + título + descripción).
 - **salario**: normaliza `salary_min/max` a USD anual (None si desconocido).
 - **seniority**: inferida desde título + tags (`junior`/`mid`/`senior`).
+- **category**: clasificación (`frontend`/`backend`/`fullstack`/`mobile`/`data`/`devops`/`qa`/`security`/`other`)
+  desde el título + el stack — para que el usuario filtre fácil. Se aplica a todas las fuentes.
 - **remoto**: detectado por fuente/señales (RemoteOK es 100% remoto).
 - **fingerprint**: `sha1(title_norm + "|" + company_norm)` para dedup (Fase 3).
 - **idempotente**: upsert por `(source_id, external_id)`; conserva `first_seen_at`.

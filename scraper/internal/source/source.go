@@ -64,13 +64,17 @@ func Run(ctx context.Context, scrapers []Scraper, workers int) []rawjob.RawJob {
 	}()
 
 	var all []rawjob.RawJob
+	ok, failed := 0, 0
 	for r := range results {
 		if r.err != nil {
 			slog.Error("fuente falló", "source", r.name, "err", r.err)
+			failed++
 			continue
 		}
 		slog.Info("fuente ok", "source", r.name, "jobs", len(r.jobs))
+		ok++
 		all = append(all, r.jobs...)
 	}
+	slog.Info("resumen fuentes", "ok", ok, "fallidas", failed)
 	return all
 }

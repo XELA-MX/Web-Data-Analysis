@@ -7,7 +7,10 @@ export default function TrendsChart() {
   const { data } = useQuery({ queryKey: ['trends'], queryFn: () => fetchTrends(30) })
 
   return (
-    <ChartCard title="Ofertas vistas por día (últimos 30 días)">
+    <ChartCard
+      title="Ofertas nuevas por día"
+      subtitle="Se va llenando conforme rastreamos las fuentes cada día (últimos 30 días)."
+    >
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={data ?? []} margin={{ top: 8, right: 16 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />

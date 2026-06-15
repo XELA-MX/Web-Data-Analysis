@@ -56,11 +56,11 @@ def upsert_job(conn: psycopg.Connection, job: dict) -> None:
             INSERT INTO jobs (
                 source_id, external_id, fingerprint, title, company, location,
                 country, remote, salary_min, salary_max, currency, tech_stack,
-                seniority, description, url, posted_at, scraped_at
+                seniority, category, description, url, posted_at, scraped_at
             ) VALUES (
                 %(source_id)s, %(external_id)s, %(fingerprint)s, %(title)s, %(company)s, %(location)s,
                 %(country)s, %(remote)s, %(salary_min)s, %(salary_max)s, %(currency)s, %(tech_stack)s,
-                %(seniority)s, %(description)s, %(url)s, %(posted_at)s, %(scraped_at)s
+                %(seniority)s, %(category)s, %(description)s, %(url)s, %(posted_at)s, %(scraped_at)s
             )
             ON CONFLICT (source_id, external_id) DO UPDATE SET
                 fingerprint = EXCLUDED.fingerprint,
@@ -74,6 +74,7 @@ def upsert_job(conn: psycopg.Connection, job: dict) -> None:
                 currency    = EXCLUDED.currency,
                 tech_stack  = EXCLUDED.tech_stack,
                 seniority   = EXCLUDED.seniority,
+                category    = EXCLUDED.category,
                 description = EXCLUDED.description,
                 url         = EXCLUDED.url,
                 posted_at   = EXCLUDED.posted_at,

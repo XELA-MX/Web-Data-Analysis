@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 
 from .. import queries
 from ..db import get_conn
-from ..models import Overview, SalaryByGroup, SourceCount, TechCount, TrendPoint
+from ..models import CategoryCount, Overview, SalaryByGroup, SourceCount, TechCount, TrendPoint
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -19,6 +19,11 @@ def get_overview(conn=Depends(get_conn)) -> Overview:
 @router.get("/tech", response_model=list[TechCount])
 def get_top_tech(conn=Depends(get_conn), limit: int = Query(20, ge=1, le=100)) -> list[TechCount]:
     return [TechCount(**r) for r in queries.top_tech(conn, limit)]
+
+
+@router.get("/categories", response_model=list[CategoryCount])
+def get_categories(conn=Depends(get_conn)) -> list[CategoryCount]:
+    return [CategoryCount(**r) for r in queries.categories(conn)]
 
 
 @router.get("/salary", response_model=list[SalaryByGroup])

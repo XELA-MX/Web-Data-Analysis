@@ -28,6 +28,9 @@ import (
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/rawjob"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source/arbeitnow"
+	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source/greenhouse"
+	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source/jobicy"
+	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source/manfred"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source/remoteok"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/source/remotive"
 	"github.com/x3no/tech-job-market-analyzer/scraper/internal/store"
@@ -47,7 +50,10 @@ type sourceMeta struct {
 var sourceCatalog = map[string]sourceMeta{
 	"remoteok":  {baseURL: "https://remoteok.com", rateLimitPerMin: 60},
 	"remotive":  {baseURL: "https://remotive.com", rateLimitPerMin: 60},
-	"arbeitnow": {baseURL: "https://www.arbeitnow.com", rateLimitPerMin: 60},
+	"arbeitnow":  {baseURL: "https://www.arbeitnow.com", rateLimitPerMin: 60},
+	"manfred":    {baseURL: "https://www.getmanfred.com", rateLimitPerMin: 60},
+	"jobicy":     {baseURL: "https://jobicy.com", rateLimitPerMin: 60},
+	"greenhouse": {baseURL: "https://boards-api.greenhouse.io", rateLimitPerMin: 120},
 }
 
 func main() {
@@ -55,7 +61,9 @@ func main() {
 	sink := flag.String("sink", "both", "destino: json | postgres | both")
 	workers := flag.Int("workers", 4, "número de fuentes a scrapear en paralelo")
 	rps := flag.Float64("rps", 1.0, "peticiones por segundo (cortesía; RemoteOK pide crawl-delay 1)")
-	timeout := flag.Duration("timeout", 60*time.Second, "timeout global de la ejecución")
+	manfredDetails := flag.Bool("manfred-details", true, "enriquecer Manfred con el detalle por oferta (skills)")
+	manfredRPS := flag.Float64("manfred-rps", 8.0, "peticiones/seg para Manfred (tiene ~1600 detalles que pedir)")
+	timeout := flag.Duration("timeout", 300*time.Second, "timeout global de la ejecución")
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
@@ -78,6 +86,11 @@ func main() {
 		remoteok.New(httpx.New(userAgent, *rps, 1)),
 		remotive.New(httpx.New(userAgent, *rps, 1)),
 		arbeitnow.New(httpx.New(userAgent, *rps, 1)),
+		// Manfred tiene su propio cliente con rps más alto por el volumen de detalles.
+		manfred.New(httpx.New(userAgent, *manfredRPS, 4), *manfredDetails),
+		jobicy.New(httpx.New(userAgent, *rps, 1)),
+		// Greenhouse pega a varios boards → rps algo más alto.
+		greenhouse.New(httpx.New(userAgent, 5, 2)),
 	}
 
 	start := time.Now()
@@ -85,7 +98,7 @@ func main() {
 
 	jobs := source.Run(ctx, scrapers, *workers)
 	if len(jobs) == 0 {
-		slog.Error("ninguna oferta recogida; no se persiste nada")
+		slog.Error("no se recogió ninguna oferta — ¿sin conexión a las fuentes?")
 		os.Exit(1)
 	}
 
@@ -145,7 +158,7 @@ func persistPostgres(ctx context.Context, jobs []rawjob.RawJob) error {
 			failed++
 			continue
 		}
-		inserted, err := st.InsertRawJobs(ctx, sourceID, group)
+		inserted, updated, err := st.InsertRawJobs(ctx, sourceID, group)
 		if err != nil {
 			slog.Error("insert raw_jobs falló", "source", name, "err", err)
 			failed++
@@ -155,8 +168,8 @@ func persistPostgres(ctx context.Context, jobs []rawjob.RawJob) error {
 			"source", name,
 			"source_id", sourceID,
 			"recibidos", len(group),
-			"insertados", inserted,
-			"duplicados", len(group)-inserted,
+			"nuevas", inserted,
+			"actualizadas", updated,
 		)
 	}
 	if failed > 0 {

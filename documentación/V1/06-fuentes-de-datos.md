@@ -12,8 +12,11 @@
 | **RemoteOK** | Endpoint JSON público | Histórico bueno; ideal para el MVP. Confirmar ToS/atribución |
 | **We Work Remotely** | Feeds RSS por categoría | RSS = estable y cómodo de parsear |
 | **Hacker News "Who is Hiring"** | API oficial de HN (Firebase) | Hilo mensual; requiere parsear texto libre, pero la API es abierta |
+| **Jobicy** | API pública JSON | Remoto tech; pide atribución. ✅ integrada |
+| **Greenhouse** | Boards JSON por empresa (`boards-api.greenhouse.io`) | Publicaciones directas del empleador → poco solape/duplicados. ✅ integrada (lista curada, filtro a títulos tech) |
 | **Remotive** | API pública documentada | Empleos remotos; buena para empezar |
-| **Arbeitnow** | API pública | Empleos (foco europeo); JSON limpio |
+| **Arbeitnow** | API pública | Empleos (foco europeo); JSON limpio. ✅ integrada |
+| **Manfred** | API pública (`/api/v2/public/offers?lang=ES`) | ~1.600 ofertas tech **en español**, con salario y % remoto. ✅ integrada |
 | **GitHub Jobs-like / Greenhouse / Lever** | Cada empresa expone su board vía API | Muchas startups publican en `boards.greenhouse.io` / `jobs.lever.co` con endpoints JSON |
 
 > Para el **MVP (Fase 1)** recomiendo **RemoteOK** o **Remotive**: JSON directo, sin
@@ -26,6 +29,7 @@
 | **LinkedIn** | ToS muy estrictos, anti-bot agresivo, riesgo legal. **No.** |
 | **Indeed** | Bloqueos anti-scraping fuertes; su API pública está restringida |
 | **Glassdoor** | Anti-bot agresivo, login |
+| **Tecnoempleo** | Protegida por **Cloudflare** (`403` a bots). Requeriría evadir anti-bot → descartada |
 
 > Estas grandes plataformas dan dolores de cabeza y zona gris legal. No aportan más
 > valor de CV que las fuentes limpias — y sí más riesgo.

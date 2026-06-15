@@ -13,8 +13,11 @@ from .models import FeedItem, PreferencesIn, PreferencesOut, SavedJob, SavedJobI
 
 router = APIRouter(prefix="/me", tags=["me"])
 
+# Categorías válidas (mismas que las de las ofertas).
+_VALID_CATEGORIES = {"frontend", "backend", "fullstack", "mobile", "data", "devops", "qa", "security", "other"}
+
 _EMPTY_PREFS = {
-    "role": None,
+    "categories": [],
     "tech_stack": [],
     "seniority": None,
     "work_mode": None,
@@ -35,6 +38,8 @@ def put_preferences(body: PreferencesIn, user=Depends(get_current_user), conn=De
     data = body.model_dump()
     # Normaliza el stack: minúsculas, sin vacíos, sin duplicados (preservando orden).
     data["tech_stack"] = list(dict.fromkeys(t.strip().lower() for t in data["tech_stack"] if t.strip()))
+    # Categorías: minúsculas, solo válidas, sin duplicados.
+    data["categories"] = list(dict.fromkeys(c.strip().lower() for c in data["categories"] if c.strip().lower() in _VALID_CATEGORIES))
     return pq.upsert_preferences(conn, user["id"], data)
 
 

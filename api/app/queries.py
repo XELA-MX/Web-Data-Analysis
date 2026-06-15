@@ -13,7 +13,7 @@ from psycopg.types.json import Jsonb
 _JOB_COLS = """
     j.id, s.name AS source, j.title, j.company, j.location, j.country,
     j.remote, j.salary_min, j.salary_max, j.currency, j.tech_stack,
-    j.seniority, j.url, j.posted_at
+    j.seniority, j.category, j.url, j.posted_at
 """
 
 
@@ -23,6 +23,7 @@ def search_jobs(
     q: str | None,
     tech: list[str] | None,
     seniority: str | None,
+    category: str | None,
     remote: bool | None,
     source: str | None,
     salary_min: int | None,
@@ -43,6 +44,9 @@ def search_jobs(
     if seniority:
         where.append("j.seniority = %(seniority)s")
         params["seniority"] = seniority
+    if category:
+        where.append("j.category = %(category)s")
+        params["category"] = category
     if remote is not None:
         where.append("j.remote = %(remote)s")
         params["remote"] = remote
@@ -115,6 +119,20 @@ def top_tech(conn: psycopg.Connection, limit: int) -> list[dict]:
         return cur.fetchall()
 
 
+def categories(conn: psycopg.Connection) -> list[dict]:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT coalesce(category, 'other') AS category, count(*) AS count
+            FROM jobs
+            WHERE NOT is_duplicate
+            GROUP BY coalesce(category, 'other')
+            ORDER BY count DESC
+            """
+        )
+        return cur.fetchall()
+
+
 def salary_by(conn: psycopg.Connection, by: str, limit: int) -> list[dict]:
     """Rangos salariales medios agrupados por 'seniority' o por 'tech'."""
     if by == "tech":
@@ -160,6 +178,20 @@ def trends(conn: psycopg.Connection, days: int) -> list[dict]:
             {"days": days},
         )
         return cur.fetchall()
+
+
+def admin_stats(conn: psycopg.Connection) -> dict:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM users) AS users,
+                (SELECT count(*) FROM jobs WHERE NOT is_duplicate) AS jobs,
+                (SELECT count(*) FROM raw_jobs WHERE NOT processed) AS pending_raw,
+                (SELECT max(scraped_at) FROM jobs) AS last_scraped
+            """
+        )
+        return cur.fetchone()
 
 
 def sources_with_counts(conn: psycopg.Connection) -> list[dict]:

@@ -26,6 +26,7 @@ def transform(raw: dict) -> dict:
     company = norm["company"]
     tags = norm["tags"]
     description = extract.strip_html(norm["description"])
+    tech_stack = extract.extract_tech_stack(tags, title, description)
 
     return {
         "source_id": raw["source_id"],
@@ -39,8 +40,9 @@ def transform(raw: dict) -> dict:
         "salary_min": norm["salary_min"],
         "salary_max": norm["salary_max"],
         "currency": norm["currency"],
-        "tech_stack": extract.extract_tech_stack(tags, title, description),
+        "tech_stack": tech_stack,
         "seniority": extract.infer_seniority(title, tags),
+        "category": extract.categorize(title, tech_stack),
         "description": description or None,
         "url": norm["url"] or raw["url"],
         "posted_at": norm["posted_at"],

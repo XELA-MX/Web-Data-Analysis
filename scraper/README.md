@@ -40,7 +40,12 @@ go build -o bin/scraper ./cmd/scraper      # binario
 ```
 
 Flags: `-out` (salida), `-workers` (fuentes en paralelo), `-rps` (peticiones/seg de
-cortesía), `-timeout` (límite global).
+cortesía), `-timeout` (límite global), `-manfred-details` (enriquecer Manfred con skills,
+on por defecto), `-manfred-rps` (rps de Manfred, tiene ~1.600 detalles que pedir).
+
+> **Persistencia idempotente:** `raw_jobs` se hace *upsert*; si una oferta ya existía y su
+> payload cambió, se refresca y se vuelve a marcar como no procesada (se reprocesa). Si no
+> cambió, se deja como está.
 
 ## Fuentes
 
@@ -52,8 +57,12 @@ su propio cliente HTTP → **rate limiting independiente por dominio**.
 | **RemoteOK** | `https://remoteok.com/api` | JSON sin auth; array (1er elemento = metadata legal, se descarta). ⚠️ **Atribución** obligatoria. |
 | **Remotive** | `https://remotive.com/api/remote-jobs` | JSON sin auth; ofertas bajo `jobs`. ⚠️ **Atribución** (ver `0-legal-notice`). |
 | **Arbeitnow** | `https://www.arbeitnow.com/api/job-board-api` | JSON sin auth; ofertas bajo `data`. Foco europeo; campo `remote` real. |
+| **Manfred** | `https://www.getmanfred.com/api/v2/public/offers?lang=ES` | JSON sin auth; ~1.600 ofertas tech **en español**, con salario (EUR) y `remotePercentage`. Con `-manfred-details` (por defecto) enriquece cada oferta con sus `techs` del detalle (fetch concurrente, rate-limited). |
+| **Jobicy** | `https://jobicy.com/api/v2/remote-jobs` | JSON sin auth; ofertas remotas tech. ⚠️ pide atribución + enlace a la oferta. |
+| **Greenhouse** | `boards-api.greenhouse.io/v1/boards/{empresa}/jobs` | Boards **directos de empresa** (lista curada de ~12), recorridos en paralelo y **filtrados a títulos tech**. Poco solape → pocas duplicadas. |
 
-> Fuentes a evitar (ToS/anti-bot): LinkedIn, Indeed, Glassdoor. Ver
+> Fuentes a evitar (ToS/anti-bot): LinkedIn, Indeed, Glassdoor, **Tecnoempleo**
+> (Cloudflare `403`). No se scrapean: violan ToS y/o exigen evadir anti-bot. Ver
 > `documentación/V1/06-fuentes-de-datos.md` y `07-etica-y-legalidad.md`.
 
 ## Estado

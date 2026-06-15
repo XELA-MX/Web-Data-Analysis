@@ -7,7 +7,10 @@ export default function TopTechChart() {
   const { data } = useQuery({ queryKey: ['tech'], queryFn: () => fetchTopTech(15) })
 
   return (
-    <ChartCard title="Tecnologías más demandadas">
+    <ChartCard
+      title="Tecnologías más demandadas"
+      subtitle="Cuántas ofertas mencionan cada tecnología (top 15)."
+    >
       <ResponsiveContainer width="100%" height={380}>
         <BarChart data={data ?? []} layout="vertical" margin={{ left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={false} />

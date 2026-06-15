@@ -11,7 +11,7 @@ from datetime import datetime
 import psycopg
 from psycopg.errors import UniqueViolation
 
-_USER_PUBLIC = "id, email, display_name, provider, created_at, last_login_at"
+_USER_PUBLIC = "id, email, display_name, provider, created_at, last_login_at, is_admin"
 
 
 def create_user(conn: psycopg.Connection, email: str, password_hash: str, display_name: str | None) -> dict | None:

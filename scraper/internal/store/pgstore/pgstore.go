@@ -56,19 +56,28 @@ func (s *Store) UpsertSource(ctx context.Context, name, baseURL string, rateLimi
 	return id, nil
 }
 
-// InsertRawJobs inserta las ofertas de una fuente, omitiendo duplicados
-// (source_id, external_id). Devuelve cuántas filas nuevas se insertaron.
-func (s *Store) InsertRawJobs(ctx context.Context, sourceID int, jobs []rawjob.RawJob) (int, error) {
+// InsertRawJobs hace upsert de las ofertas de una fuente. Si la oferta ya existía
+// y su payload cambió (p. ej. Manfred ahora trae techs), se refresca y se vuelve a
+// marcar como no procesada para reprocesarla. Devuelve (nuevas, actualizadas).
+func (s *Store) InsertRawJobs(ctx context.Context, sourceID int, jobs []rawjob.RawJob) (inserted, updated int, err error) {
 	batch := &pgx.Batch{}
 	for _, j := range jobs {
 		payload, err := json.Marshal(j.Payload)
 		if err != nil {
-			return 0, fmt.Errorf("serializando payload de %s: %w", j.ExternalID, err)
+			return 0, 0, fmt.Errorf("serializando payload de %s: %w", j.ExternalID, err)
 		}
 		batch.Queue(`
 			INSERT INTO raw_jobs (source_id, external_id, raw_payload, url, scraped_at, processed)
 			VALUES ($1, $2, $3::jsonb, $4, $5, FALSE)
-			ON CONFLICT (source_id, external_id) DO NOTHING`,
+			ON CONFLICT (source_id, external_id) DO UPDATE SET
+				raw_payload = EXCLUDED.raw_payload,
+				url         = EXCLUDED.url,
+				scraped_at  = EXCLUDED.scraped_at,
+				processed   = CASE
+					WHEN raw_jobs.raw_payload IS DISTINCT FROM EXCLUDED.raw_payload THEN FALSE
+					ELSE raw_jobs.processed
+				END
+			RETURNING (xmax = 0) AS inserted`,
 			sourceID, j.ExternalID, string(payload), nullable(j.URL), j.ScrapedAt,
 		)
 	}
@@ -76,15 +85,18 @@ func (s *Store) InsertRawJobs(ctx context.Context, sourceID int, jobs []rawjob.R
 	br := s.pool.SendBatch(ctx, batch)
 	defer br.Close()
 
-	inserted := 0
 	for range jobs {
-		ct, err := br.Exec()
-		if err != nil {
-			return inserted, fmt.Errorf("insertando raw_jobs: %w", err)
+		var wasInsert bool
+		if err := br.QueryRow().Scan(&wasInsert); err != nil {
+			return inserted, updated, fmt.Errorf("upsert raw_jobs: %w", err)
 		}
-		inserted += int(ct.RowsAffected())
+		if wasInsert {
+			inserted++
+		} else {
+			updated++
+		}
 	}
-	return inserted, nil
+	return inserted, updated, nil
 }
 
 // nullable convierte "" en NULL para no guardar cadenas vacías.

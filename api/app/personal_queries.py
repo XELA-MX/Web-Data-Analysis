@@ -11,12 +11,13 @@ import psycopg
 from psycopg.errors import ForeignKeyViolation
 from psycopg.types.json import Jsonb
 
-_PREF_COLS = "role, tech_stack, seniority, work_mode, country, salary_target, updated_at"
+_PREF_COLS = "categories, tech_stack, seniority, work_mode, country, salary_target, updated_at"
 
 # Proyección de una oferta + nombre de fuente (igual que en queries.py).
 _JOB_COLS = """
     j.id, s.name AS source, j.title, j.company, j.location, j.country, j.remote,
-    j.salary_min, j.salary_max, j.currency, j.tech_stack, j.seniority, j.url, j.posted_at
+    j.salary_min, j.salary_max, j.currency, j.tech_stack, j.seniority, j.category,
+    j.url, j.posted_at
 """
 
 
@@ -34,11 +35,11 @@ def upsert_preferences(conn: psycopg.Connection, user_id: int, p: dict) -> dict:
         cur.execute(
             f"""
             INSERT INTO user_preferences
-                (user_id, role, tech_stack, seniority, work_mode, country, salary_target, updated_at)
+                (user_id, categories, tech_stack, seniority, work_mode, country, salary_target, updated_at)
             VALUES
-                (%(uid)s, %(role)s, %(tech)s, %(seniority)s, %(work_mode)s, %(country)s, %(salary_target)s, now())
+                (%(uid)s, %(categories)s, %(tech)s, %(seniority)s, %(work_mode)s, %(country)s, %(salary_target)s, now())
             ON CONFLICT (user_id) DO UPDATE SET
-                role = EXCLUDED.role,
+                categories = EXCLUDED.categories,
                 tech_stack = EXCLUDED.tech_stack,
                 seniority = EXCLUDED.seniority,
                 work_mode = EXCLUDED.work_mode,
@@ -49,7 +50,7 @@ def upsert_preferences(conn: psycopg.Connection, user_id: int, p: dict) -> dict:
             """,
             {
                 "uid": user_id,
-                "role": p["role"],
+                "categories": Jsonb(p["categories"]),
                 "tech": Jsonb(p["tech_stack"]),
                 "seniority": p["seniority"],
                 "work_mode": p["work_mode"],
@@ -125,11 +126,13 @@ def personalized_feed(
     """Feed canónico ordenado por afinidad con el perfil.
 
     Score = nº de tecnologías del usuario presentes en la oferta
+            + 3 si la categoría de la oferta es una de las áreas de interés
             + 2 si coincide el seniority
             + 1 si el usuario quiere remoto y la oferta es remota.
     Se excluyen las ofertas que el usuario ha descartado (status 'dismissed').
     """
     techs = (prefs or {}).get("tech_stack") or []
+    categories = (prefs or {}).get("categories") or []
     seniority = (prefs or {}).get("seniority")
     want_remote = (prefs or {}).get("work_mode") == "remote"
 
@@ -140,6 +143,7 @@ def personalized_feed(
                 (
                     (SELECT count(*) FROM jsonb_array_elements_text(j.tech_stack) tt
                      WHERE tt = ANY(%(techs)s::text[]))
+                    + CASE WHEN j.category = ANY(%(categories)s::text[]) THEN 3 ELSE 0 END
                     + CASE WHEN j.seniority = %(seniority)s::text THEN 2 ELSE 0 END
                     + CASE WHEN %(want_remote)s::boolean AND j.remote THEN 1 ELSE 0 END
                 )::int AS score
@@ -155,6 +159,7 @@ def personalized_feed(
             """,
             {
                 "techs": techs,
+                "categories": categories,
                 "seniority": seniority,
                 "want_remote": want_remote,
                 "uid": user_id,

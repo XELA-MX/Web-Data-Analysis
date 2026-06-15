@@ -9,7 +9,10 @@ export default function SalaryChart() {
   const { data } = useQuery({ queryKey: ['salary', 'seniority'], queryFn: () => fetchSalary('seniority') })
 
   return (
-    <ChartCard title="Salario medio por seniority (USD)">
+    <ChartCard
+      title="Salario medio por seniority"
+      subtitle="Media de los rangos declarados, en USD anuales. Pocas ofertas publican salario."
+    >
       {data && data.length > 0 ? (
         <ResponsiveContainer width="100%" height={380}>
           <BarChart data={data} margin={{ top: 8 }}>

@@ -59,6 +59,13 @@ def get_current_user(session: str | None = Cookie(default=None), conn=Depends(ge
     return user
 
 
+def require_admin(user=Depends(get_current_user)) -> dict:
+    """Dependencia: exige sesión Y rol admin (403 si no)."""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requiere permisos de administrador")
+    return user
+
+
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterIn, request: Request, response: Response, conn=Depends(get_conn)) -> dict:
     if not ratelimit.allow(f"register:{_client_ip(request)}", _REGISTER_MAX, _REGISTER_WINDOW):

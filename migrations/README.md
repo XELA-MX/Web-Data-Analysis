@@ -31,6 +31,10 @@ migrate -path ./migrations -database "$DATABASE_URI" down 1
 | `0002`  | `UNIQUE (name)` en `sources` (upsert idempotente de la fuente desde el scraper). |
 | `0003`  | `jobs.is_duplicate` + índice parcial canónico (deduplicación cross-source). |
 | `0004`  | Cuentas: `users`, `user_preferences`, `saved_jobs`, `sessions` (Fase 4.5). |
+| `0005`  | `jobs.category` + índice (categoría derivada para filtrar). |
+| `0006`  | `users.is_admin` (rol admin). Marcar admins = `UPDATE` manual por email. |
+| `0007`  | Añade `intern` a los niveles de seniority (jobs + user_preferences). |
+| `0008`  | `user_preferences.categories` (lista) sustituye a `role` (área única → múltiples). |
 
 > Las tablas de usuarios/personalización llegaron en `0004` (Fase 4.5). `alerts` queda
 > como extensión futura.

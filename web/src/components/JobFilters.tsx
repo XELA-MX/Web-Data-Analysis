@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { JobFilters } from '../api'
-import { fetchSources } from '../api'
+import { fetchCategories, fetchSources } from '../api'
+import { categoryLabel, SENIORITY_ORDER, seniorityLabel } from '../labels'
 
 interface Props {
   filters: JobFilters
@@ -9,6 +10,7 @@ interface Props {
 
 export default function JobFiltersBar({ filters, onChange }: Props) {
   const { data: sources } = useQuery({ queryKey: ['sources'], queryFn: fetchSources })
+  const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories })
 
   const set = (patch: Partial<JobFilters>) => onChange({ ...filters, ...patch, offset: 0 })
 
@@ -41,6 +43,22 @@ export default function JobFiltersBar({ filters, onChange }: Props) {
       </label>
 
       <label className="flex flex-col text-xs text-slate-500">
+        Categoría
+        <select
+          className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+          value={filters.category ?? ''}
+          onChange={(e) => set({ category: e.target.value || undefined })}
+        >
+          <option value="">Todas</option>
+          {categories?.map((c) => (
+            <option key={c.category} value={c.category}>
+              {categoryLabel(c.category)} ({c.count})
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col text-xs text-slate-500">
         Seniority
         <select
           className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
@@ -48,9 +66,11 @@ export default function JobFiltersBar({ filters, onChange }: Props) {
           onChange={(e) => set({ seniority: e.target.value || undefined })}
         >
           <option value="">Todos</option>
-          <option value="junior">Junior</option>
-          <option value="mid">Mid</option>
-          <option value="senior">Senior</option>
+          {SENIORITY_ORDER.map((s) => (
+            <option key={s} value={s}>
+              {seniorityLabel(s)}
+            </option>
+          ))}
         </select>
       </label>
 
